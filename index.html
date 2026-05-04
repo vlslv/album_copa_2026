@@ -3,109 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle Álbum Copa 2026</title>
+    <title>Dashboard Copa 2026 - Panini</title>
     <style>
-        :root { --primary: #007a5e; --secondary: #f4c430; --bg: #f4f4f9; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        h1, h2 { text-align: center; color: var(--primary); }
+        :root { --primary: #8a1538; --secondary: #eeeee4; --accent: #007a5e; }
+        body { font-family: sans-serif; background: #f0f0f0; margin: 0; padding: 20px; }
+        .container { max-width: 1100px; margin: auto; }
         
-        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px; }
-        .card { background: white; padding: 20px; border-radius: 10px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .card h3 { margin: 0; color: #555; }
-        .card p { font-size: 2em; font-weight: bold; margin: 10px 0; color: var(--primary); }
+        /* Dashboard Stats */
+        .stats { display: flex; gap: 15px; margin-bottom: 20px; position: sticky; top: 10px; z-index: 100; }
+        .card { background: white; padding: 15px; border-radius: 8px; flex: 1; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-top: 5px solid var(--primary); }
+        .card h3 { margin: 0; font-size: 0.9em; color: #666; }
+        .card p { margin: 5px 0 0; font-size: 1.5em; font-weight: bold; color: var(--primary); }
+
+        /* Grid de Times */
+        .team-section { background: white; border-radius: 10px; padding: 15px; margin-bottom: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .team-title { font-size: 1.2em; font-weight: bold; margin-bottom: 10px; color: var(--primary); border-bottom: 2px solid var(--secondary); padding-bottom: 5px; }
         
-        .filters { text-align: center; margin-bottom: 20px; }
-        select, button { padding: 10px; font-size: 1em; border-radius: 5px; border: 1px solid #ccc; }
-        button { background-color: var(--primary); color: white; border: none; cursor: pointer; }
+        .sticker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(45px, 1fr)); gap: 8px; }
         
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; }
-        .sticker { background: white; border: 2px solid #ddd; padding: 10px; text-align: center; border-radius: 5px; cursor: pointer; transition: 0.3s; }
-        .sticker.filled { background-color: #d4edda; border-color: #c3e6cb; color: var(--primary); font-weight: bold; }
-        .sticker:hover { transform: scale(1.05); }
+        /* Sticker Style */
+        .sticker { height: 45px; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 0.8em; transition: 0.2s; background: #fff; }
+        .sticker:hover { filter: brightness(0.9); }
+        .sticker.c-filled { background-color: var(--accent) !important; color: white; border-color: var(--accent); }
         
-        .mcdonalds { border-color: #ff0000; }
-        .legend { border-color: #b8860b; background-color: #fffacd; }
+        /* Cores Especiais */
+        .sec-mcdonalds { border-left: 10px solid #ffbc0d; }
+        .sec-legend { border-left: 10px solid #b8860b; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🏆 Meu Álbum - Copa 2026 🏆</h1>
-    
-    <div class="dashboard">
-        <div class="card"><h3>Total</h3><p id="totalCount">0/980</p></div>
-        <div class="card"><h3>Faltando</h3><p id="missingCount">980</p></div>
-        <div class="card"><h3>%</h3><p id="percentCount">0%</p></div>
+    <div class="stats">
+        <div class="card"><h3>Total</h3><p id="stat-total">0/1108</p></div>
+        <div class="card"><h3>Porcentagem</h3><p id="stat-perc">0%</p></div>
+        <div class="card"><button onclick="exportData()" style="cursor:pointer">💾 Salvar Backup</button></div>
     </div>
 
-    <div class="filters">
-        <select id="sectionSelect" onchange="renderStickers()">
-            <option value="all">Todas as Figurinhas</option>
-            <option value="teams">Seleções (48 times)</option>
-            <option value="mcdonalds">McDonald's</option>
-            <option value="legends">Legends</option>
-        </select>
-        <button onclick="resetAlbum()">Resetar</button>
-    </div>
-
-    <div class="grid" id="stickerGrid"></div>
+    <div id="main-content"></div>
 </div>
 
 <script>
-    const TOTAL_STICKERS = 980;
-    let stickers = JSON.parse(localStorage.getItem('copa2026_stickers')) || {};
+    // Configuração do Álbum
+    const totalTimes = 48;
+    const jogadoresPorTime = 22;
+    const extras = [
+        { nome: "McDonald's", prefixo: "MCD", qtd: 12, classe: "sec-mcdonalds" },
+        { nome: "Legends", prefixo: "LGD", qtd: 40, classe: "sec-legend" }
+    ];
 
-    function save() {
-        localStorage.setItem('copa2026_stickers', JSON.stringify(stickers));
-        updateDashboard();
-    }
+    let albumData = JSON.parse(localStorage.getItem('album2026_data')) || {};
 
-    function toggleSticker(id) {
-        stickers[id] = !stickers[id];
-        save();
-        renderStickers();
-    }
+    function render() {
+        const container = document.getElementById('main-content');
+        container.innerHTML = '';
+        let preenchidas = 0;
+        let totalGeral = (totalTimes * jogadoresPorTime) + extras.reduce((acc, curr) => acc + curr.qtd, 0);
 
-    function updateDashboard() {
-        const filled = Object.values(stickers).filter(v => v).length;
-        document.getElementById('totalCount').innerText = `${filled}/${TOTAL_STICKERS}`;
-        document.getElementById('missingCount').innerText = TOTAL_STICKERS - filled;
-        document.getElementById('percentCount').innerText = Math.round((filled / TOTAL_STICKERS) * 100) + '%';
-    }
-
-    function resetAlbum() {
-        if(confirm("Tem certeza que deseja apagar todo o álbum?")) {
-            stickers = {};
-            save();
-            renderStickers();
-        }
-    }
-
-    function renderStickers() {
-        const grid = document.getElementById('stickerGrid');
-        grid.innerHTML = '';
-        const filter = document.getElementById('sectionSelect').value;
-        
-        for (let i = 1; i <= TOTAL_STICKERS; i++) {
-            // Lógica simples de divisão (ajustar conforme manual real)
-            if(filter === 'mcdonalds' && (i < 900 || i > 950)) continue; 
-            if(filter === 'legends' && (i < 951 || i > 980)) continue;
-
-            const div = document.createElement('div');
-            div.className = `sticker ${stickers[i] ? 'filled' : ''}`;
-            if(i > 950) div.classList.add('legend');
-            else if(i > 900) div.classList.add('mcdonalds');
+        // Renderizar Times
+        for (let t = 1; t <= totalTimes; t++) {
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'team-section';
+            const nomeTime = `TIME ${t.toString().padStart(2, '0')}`;
             
-            div.innerText = i;
-            div.onclick = () => toggleSticker(i);
-            grid.appendChild(div);
+            timeDiv.innerHTML = `<div class="team-title">${nomeTime}</div>`;
+            const grid = document.createElement('div');
+            grid.className = 'sticker-grid';
+
+            for (let j = 1; j <= jogadoresPorTime; j++) {
+                const id = `T${t}-J${j}`;
+                const st = createStickerElement(id, j);
+                if (albumData[id]) preenchidas++;
+                grid.appendChild(st);
+            }
+            timeDiv.appendChild(grid);
+            container.appendChild(timeDiv);
         }
+
+        // Renderizar Especiais (McDonalds e Legends)
+        extras.forEach(tipo => {
+            const sec = document.createElement('div');
+            sec.className = `team-section ${tipo.classe}`;
+            sec.innerHTML = `<div class="team-title">${tipo.nome}</div>`;
+            const grid = document.createElement('div');
+            grid.className = 'sticker-grid';
+
+            for (let i = 1; i <= tipo.qtd; i++) {
+                const id = `${tipo.prefixo}-${i}`;
+                const st = createStickerElement(id, i);
+                if (albumData[id]) preenchidas++;
+                grid.appendChild(st);
+            }
+            sec.appendChild(grid);
+            container.appendChild(sec);
+        });
+
+        // Atualizar Stats
+        document.getElementById('stat-total').innerText = `${preenchidas}/${totalGeral}`;
+        document.getElementById('stat-perc').innerText = Math.round((preenchidas/totalGeral)*100) + '%';
     }
 
-    updateDashboard();
-    renderStickers();
+    function createStickerElement(id, label) {
+        const div = document.createElement('div');
+        div.className = `sticker ${albumData[id] ? 'c-filled' : ''}`;
+        div.innerText = label;
+        div.onclick = () => {
+            albumData[id] = !albumData[id];
+            localStorage.setItem('album2026_data', JSON.stringify(albumData));
+            render();
+        };
+        return div;
+    }
+
+    function exportData() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(albumData));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", "album_copa_2026_backup.json");
+        downloadAnchorNode.click();
+    }
+
+    render();
 </script>
 </body>
 </html>
+
 
