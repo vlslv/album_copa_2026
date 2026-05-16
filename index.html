@@ -31,9 +31,9 @@
 
 <div class="container">
     <div class="header">
-        <div class="stat-item"><span class="stat-value" id="total">0/1108</span><span class="stat-label">Total</span></div>
+        <div class="stat-item"><span class="stat-value" id="total">0/993</span><span class="stat-label">Total</span></div>
         <div class="stat-item"><span class="stat-value" id="percent">0%</span><span class="stat-label">Progresso</span></div>
-        <button onclick="resetAlbum()" style="background:#ff4444; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">Limpar Tudo</button>
+        <button onclick="resetAlbum()" style="background:#ff4444; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;">Limpar Tudo</button>
     </div>
 
     <div class="group-container" id="content"></div>
@@ -55,6 +55,7 @@
         "GRUPO L": ["Inglaterra (ENG)", "Croácia (CRO)", "Gana (GHA)", "Panamá (PAN)"]
     };
 
+    // Carrega o álbum salvo ou inicia um objeto vazio
     let album = JSON.parse(localStorage.getItem('album2026_v2')) || {};
 
     function render() {
@@ -62,6 +63,7 @@
         container.innerHTML = '';
         let count = 0;
 
+        // 1. Renderiza os países e soma as marcadas
         Object.keys(timesPorGrupo).forEach(grupo => {
             timesPorGrupo[grupo].forEach(time => {
                 const card = document.createElement('div');
@@ -77,7 +79,9 @@
                     div.className = `sticker ${album[id] ? 'checked' : ''}`;
                     div.innerText = i;
                     div.onclick = () => toggle(id);
-                    if(album[id]) count++;
+                    
+                    if(album[id]) count++; // Soma contador geral
+                    
                     grid.appendChild(div);
                 }
                 card.appendChild(grid);
@@ -85,51 +89,60 @@
             });
         });
 
-        // Especiais
-        renderSpecials(container, "Coca Cola", "CC", 14, "cc");
-        renderSpecials(container, "FIFA World Cup", "FWC", 19, "fwc");
+        // 2. Renderiza as seções especiais e captura as figurinhas checadas delas
+        count += renderSpecials(container, "Coca Cola", "CC", 14, "cc");
+        count += renderSpecials(container, "FIFA World Cup", "FWC", 19, "fwc");
 
-        const totalGeral = 993; // (48*20) + 14 + 19
+        // 3. Atualiza o cabeçalho estático com a matemática correta
+        const totalGeral = 993; // 48 seleções * 20 + 14 CC + 19 FWC
         document.getElementById('total').innerText = `${count}/${totalGeral}`;
         document.getElementById('percent').innerText = Math.round((count/totalGeral)*100) + '%';
     }
 
     function renderSpecials(container, nome, prefixo, qtd, classe) {
+        let checkedInSpecial = 0;
         const card = document.createElement('div');
         card.className = `team-card ${classe}`;
         card.innerHTML = `<div class="team-name">${nome}</div>`;
+        
         const grid = document.createElement('div');
         grid.className = 'sticker-grid';
+        
         for(let i=1; i<=qtd; i++) {
             const id = `${prefixo}-${i}`;
             const div = document.createElement('div');
             div.className = `sticker ${album[id] ? 'checked' : ''}`;
             div.innerText = i;
             div.onclick = () => toggle(id);
+            
+            if(album[id]) checkedInSpecial++; // Conta quantas especiais estão marcadas
+            
             grid.appendChild(div);
         }
         card.appendChild(grid);
         container.appendChild(card);
+        
+        return checkedInSpecial; // Retorna a soma para o contador geral
     }
 
+    // Altera o estado e grava instantaneamente no banco local
     function toggle(id) {
         album[id] = !album[id];
         localStorage.setItem('album2026_v2', JSON.stringify(album));
         render();
     }
 
+    // Apaga a chave correspondente do navegador
     function resetAlbum() {
         if(confirm("Deseja zerar sua coleção?")) {
             album = {};
-            localStorage.removeItem('album2026_v2');
+            localStorage.setItem('album2026_v2', JSON.stringify(album));
             render();
         }
     }
 
+    // Executa na primeira abertura
     render();
 </script>
 </body>
 </html>
-
-
-
