@@ -71,7 +71,7 @@
                 const grid = document.createElement('div');
                 grid.className = 'sticker-grid';
                 
-                for(let i=1; i<=22; i++) {
+                for(let i=1; i<=20; i++) {
                     const id = `${time}-${i}`;
                     const div = document.createElement('div');
                     div.className = `sticker ${album[id] ? 'checked' : ''}`;
@@ -89,7 +89,7 @@
         renderSpecials(container, "Coca Cola", "CC", 14, "cc");
         renderSpecials(container, "FIFA World Cup", "FWC", 19, "fwc");
 
-        const totalGeral = 1108; // (48*22) + 14 + 19
+        const totalGeral = 993; // (48*20) + 14 + 19
         document.getElementById('total').innerText = `${count}/${totalGeral}`;
         document.getElementById('percent').innerText = Math.round((count/totalGeral)*100) + '%';
     }
