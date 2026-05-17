@@ -40,8 +40,8 @@
         <button onclick="resetAlbum()" style="background:#ff4444; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;">Limpar Tudo</button>
         
         <div class="backup-area">
-            <input type="text" id="backup-input" placeholder="Cole o texto do seu bloco de notas antigo aqui">
-            <button onclick="importBackup()" style="background:var(--accent); color:white; border:none; padding:5px 15px; border-radius:3px; cursor:pointer; font-weight:bold;">Importar e Converter</button>
+            <input type="text" id="backup-input" placeholder="Cole aqui o texto do seu bloco de notas">
+            <button onclick="importBackup()" style="background:var(--accent); color:white; border:none; padding:5px 15px; border-radius:3px; cursor:pointer; font-weight:bold;">Importar Backup Corrigido</button>
         </div>
     </div>
 
@@ -54,12 +54,12 @@
 <script>
     // Configurações do Firebase (MANTENHA SUAS ASPAS DUPLAS!)
     const firebaseConfig = {
-        apiKey: "AIzaSyB_ExvzoDURzveNdJ0qxh1oG5C4oqevv0A",
-        authDomain: "albumcopa2026-f3f73.firebaseapp.com",
-        projectId: "albumcopa2026-f3f73",
-        storageBucket: "albumcopa2026-f3f73.firebasestorage.app",
-        messagingSenderId: "221770623153",
-        appId: "1:221770623153:web:c46ad3d78c3395ae641a90"
+        apiKey: "SUA_API_KEY",
+        authDomain: "SEU_AUTH_DOMAIN",
+        projectId: "SEU_PROJECT_ID",
+        storageBucket: "SEU_STORAGE_BUCKET",
+        messagingSenderId: "SEU_MESSAGING_SENDER_ID",
+        appId: "SEU_APP_ID"
     };
 
     firebase.initializeApp(firebaseConfig);
@@ -80,14 +80,6 @@
         "GRUPO K": ["Portugal (POR)", "RD Congo (COD)", "Uzbequistão (UZB)", "Colômbia (COL)"],
         "GRUPO L": ["Inglaterra (ENG)", "Croácia (CRO)", "Gana (GHA)", "Panamá (PAN)"]
     };
-
-    // Mapeamento linear para tradução dos IDs puros da primeira versão
-    let listaLinearDeTimes = [];
-    Object.keys(timesPorGrupo).forEach(grupo => {
-        timesPorGrupo[grupo].forEach(time => {
-            listaLinearDeTimes.push(time);
-        });
-    });
 
     let album = {};
 
@@ -164,51 +156,43 @@
         }
     }
 
-    // NOVA FUNÇÃO ATUALIZADA: Converte IDs "st-X" para "País-X" automaticamente
+    // NOVA FUNÇÃO ATUALIZADA: Decodifica especificamente a estrutura do seu log do console
     function importBackup() {
         const rawText = document.getElementById('backup-input').value.trim();
         if(!rawText) return alert("Cole o texto do backup primeiro!");
 
         try {
-            let oldIds = JSON.parse(rawText);
-            let convertedAlbum = {};
-
-            if (!Array.isArray(oldIds)) {
-                // Se por acaso colou um objeto, tenta ler as chaves dele
-                oldIds = Object.keys(oldIds).filter(k => oldIds[k] === true);
+            const parsedArray = JSON.parse(rawText);
+            
+            // Localiza o par chave/valor correspondente ao 'album2026_v2' no seu array bidimensional
+            const parAlbum = parsedArray.find(item => Array.isArray(item) && item[0] === "album2026_v2");
+            
+            if (!parAlbum || !parAlbum[1]) {
+                return alert("Não encontramos a chave 'album2026_v2' no texto colado.");
             }
 
-            oldIds.forEach(id => {
-                if (id.startsWith('st-')) {
-                    // Descobre o número puro (ex: st-15 -> 15)
-                    const numPuro = parseInt(id.replace('st-', ''), 10);
-                    
-                    // Na versão 1, cada time tinha 11 figurinhas fixas. 
-                    // Descobrimos o índice do time na lista linear dividindo por 11.
-                    const indiceTime = Math.floor((numPuro - 1) / 11);
-                    const figurinhaNoTime = ((numPuro - 1) % 11) + 1;
-                    
-                    const nomeDoPais = listaLinearDeTimes[indiceTime];
-                    if (nomeDoPais && figurinhaNoTime <= 20) {
-                        // Salva no formato novo (Ex: "México (MEX)-5")
-                        convertedAlbum[`${nomeDoPais}-${figurinhaNoTime}`] = true;
+            // Transforma o texto interno JSON em um objeto real de figurinhas
+            const dadosBrutosStickers = JSON.parse(parAlbum[1]);
+            let finalAlbum = {};
+
+            // Filtra os dados: remove chaves inválidas antigas e mantém apenas chaves oficiais com "true"
+            Object.keys(dadosBrutosStickers).forEach(key => {
+                if(dadosBrutosStickers[key] === true) {
+                    // Mantém apenas os registros que contêm parênteses (formato novo corrigido) ou especiais
+                    if(key.includes('(') || key.startsWith('CC-') || key.startsWith('FWC-')) {
+                        finalAlbum[key] = true;
                     }
-                } else if (id.startsWith('cc-') || id.startsWith('fwc-')) {
-                    // Para especiais, o formato de prefixo permaneceu quase idêntico
-                    const partes = id.split('-');
-                    const prefixoNovo = partes[0].toUpperCase(); // cc -> CC
-                    convertedAlbum[`${prefixoNovo}-${partes[1]}`] = true;
                 }
             });
 
-            // Envia o dicionário já traduzido diretamente para o Firebase
-            docRef.set(convertedAlbum).then(() => {
-                alert("Backup antigo convertido e importado com sucesso para a nuvem!");
+            // Grava os dados tratados diretamente na nuvem do Firebase
+            docRef.set(finalAlbum).then(() => {
+                alert("Backup decodificado e enviado com sucesso para a nuvem!");
                 document.getElementById('backup-input').value = '';
-            }).catch(err => alert("Erro ao salvar dados convertidos na nuvem."));
+            }).catch(err => alert("Erro ao sincronizar com o banco de dados."));
 
         } catch (e) {
-            alert("Erro ao ler o backup. Garanta que copiou o texto completo com os colchetes [ ].");
+            alert("Erro na leitura do formato. Garanta que copiou a mensagem de texto completa.");
         }
     }
 
@@ -224,4 +208,3 @@
 </script>
 </body>
 </html>
-
