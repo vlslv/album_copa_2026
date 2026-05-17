@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Álbum Copa 2026 - Dashboard</title>
+    <title>Álbum Copa 2026 - Nuvem Dashboard</title>
     <style>
         :root { --primary: #8a1538; --secondary: #eeeee4; --accent: #007a5e; --fwc: #b8860b; --cc: #ffbc0d; }
         body { font-family: 'Segoe UI', sans-serif; background: #f4f4f4; margin: 0; padding: 20px; }
@@ -25,6 +25,7 @@
         .special-section { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
         .cc { border-top: 5px solid var(--cc); }
         .fwc { border-top: 5px solid var(--fwc); }
+        .loading { opacity: 0.5; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -39,7 +40,27 @@
     <div class="group-container" id="content"></div>
 </div>
 
+<!-- Scripts de Conexão com o Firebase Cloud -->
+<script src="https://gstatic.com"></script>
+<script src="https://gstatic.com"></script>
+
 <script>
+    // Configurações do seu Banco de Dados (COLE SEUS DADOS AQUI)
+    const firebaseConfig = {
+        apiKey: "AIzaSyB_ExvzoDURzveNdJ0qxh1oG5C4oqevv0A",
+        authDomain:  "albumcopa2026-f3f73.firebaseapp.com",
+        projectId: "albumcopa2026-f3f73",
+        storageBucket: "albumcopa2026-f3f73.firebasestorage.app",
+        messagingSenderId:  "221770623153",
+        appId: "1:221770623153:web:c46ad3d78c3395ae641a90"
+    };
+
+    // Inicializa o Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    // Armazenamos todas as marcações em um único documento chamado 'colecao'
+    const docRef = db.collection("album").doc("colecao");
+
     const timesPorGrupo = {
         "GRUPO A": ["México (MEX)", "África do Sul (RSA)", "Coreia do Sul (KOR)", "Tchéquia (CZE)"],
         "GRUPO B": ["Canadá (CAN)", "Bósnia e Herz. (BIH)", "Catar (QAT)", "Suíça (SUI)"],
@@ -55,15 +76,13 @@
         "GRUPO L": ["Inglaterra (ENG)", "Croácia (CRO)", "Gana (GHA)", "Panamá (PAN)"]
     };
 
-    // Carrega o álbum salvo ou inicia um objeto vazio
-    let album = JSON.parse(localStorage.getItem('album2026_v2')) || {};
+    let album = {};
 
     function render() {
         const container = document.getElementById('content');
         container.innerHTML = '';
         let count = 0;
 
-        // 1. Renderiza os países e soma as marcadas
         Object.keys(timesPorGrupo).forEach(grupo => {
             timesPorGrupo[grupo].forEach(time => {
                 const card = document.createElement('div');
@@ -80,7 +99,7 @@
                     div.innerText = i;
                     div.onclick = () => toggle(id);
                     
-                    if(album[id]) count++; // Soma contador geral
+                    if(album[id]) count++;
                     
                     grid.appendChild(div);
                 }
@@ -89,12 +108,10 @@
             });
         });
 
-        // 2. Renderiza as seções especiais e captura as figurinhas checadas delas
         count += renderSpecials(container, "Coca Cola", "CC", 14, "cc");
-        count += renderSpecials(container, "FIFA World Cup", "FWC", 19, "fwc");
+        count += renderSpecials(container, "FIFA World Cup", "FWC", 20, "fwc");
 
-        // 3. Atualiza o cabeçalho estático com a matemática correta
-        const totalGeral = 993; // 48 seleções * 20 + 14 CC + 19 FWC
+        const totalGeral = 993;
         document.getElementById('total').innerText = `${count}/${totalGeral}`;
         document.getElementById('percent').innerText = Math.round((count/totalGeral)*100) + '%';
     }
@@ -104,45 +121,49 @@
         const card = document.createElement('div');
         card.className = `team-card ${classe}`;
         card.innerHTML = `<div class="team-name">${nome}</div>`;
-        
         const grid = document.createElement('div');
         grid.className = 'sticker-grid';
-        
         for(let i=1; i<=qtd; i++) {
             const id = `${prefixo}-${i}`;
             const div = document.createElement('div');
             div.className = `sticker ${album[id] ? 'checked' : ''}`;
             div.innerText = i;
             div.onclick = () => toggle(id);
-            
-            if(album[id]) checkedInSpecial++; // Conta quantas especiais estão marcadas
-            
+            if(album[id]) checkedInSpecial++;
             grid.appendChild(div);
         }
         card.appendChild(grid);
         container.appendChild(card);
-        
-        return checkedInSpecial; // Retorna a soma para o contador geral
+        return checkedInSpecial;
     }
 
-    // Altera o estado e grava instantaneamente no banco local
+    // Sincronização em tempo real com a Nuvem
     function toggle(id) {
+        document.getElementById('content').classList.add('loading');
         album[id] = !album[id];
-        localStorage.setItem('album2026_v2', JSON.stringify(album));
-        render();
+        
+        docRef.set(album).then(() => {
+            document.getElementById('content').classList.remove('loading');
+            render();
+        }).catch(err => console.error("Erro ao salvar:", err));
     }
 
-    // Apaga a chave correspondente do navegador
     function resetAlbum() {
-        if(confirm("Deseja zerar sua coleção?")) {
+        if(confirm("Deseja zerar sua coleção na nuvem?")) {
             album = {};
-            localStorage.setItem('album2026_v2', JSON.stringify(album));
-            render();
+            docRef.set(album).then(() => render());
         }
     }
 
-    // Executa na primeira abertura
-    render();
+    // Escuta ativa: Se mudar em um terminal, atualiza no outro instantaneamente
+    docRef.onSnapshot((doc) => {
+        if (doc.exists) {
+            album = doc.data();
+        } else {
+            album = {};
+        }
+        render();
+    });
 </script>
 </body>
 </html>
