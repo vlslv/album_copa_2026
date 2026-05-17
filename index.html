@@ -9,10 +9,13 @@
         body { font-family: 'Segoe UI', sans-serif; background: #f4f4f4; margin: 0; padding: 20px; }
         .container { max-width: 1000px; margin: auto; }
         
-        .header { position: sticky; top: 0; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); z-index: 1000; display: flex; justify-content: space-around; align-items: center; margin-bottom: 25px; }
+        .header { position: sticky; top: 0; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); z-index: 1000; display: flex; justify-content: space-around; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 10px; }
         .stat-item { text-align: center; }
         .stat-value { display: block; font-size: 1.4em; font-weight: bold; color: var(--primary); }
         .stat-label { font-size: 0.8em; color: #666; text-transform: uppercase; }
+
+        .backup-area { width: 100%; background: #eee; padding: 10px; border-radius: 5px; display: flex; gap: 10px; margin-top: 10px; }
+        .backup-area input { flex: 1; padding: 5px; border: 1px solid #ddd; border-radius: 3px; }
 
         .group-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 20px; }
         .team-card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
@@ -35,30 +38,33 @@
         <div class="stat-item"><span class="stat-value" id="total">0/993</span><span class="stat-label">Total</span></div>
         <div class="stat-item"><span class="stat-value" id="percent">0%</span><span class="stat-label">Progresso</span></div>
         <button onclick="resetAlbum()" style="background:#ff4444; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;">Limpar Tudo</button>
+        
+        <!-- Ferramenta de Importação -->
+        <div class="backup-area">
+            <input type="text" id="backup-input" placeholder="Cole aqui o texto do seu bloco de notas">
+            <button onclick="importBackup()" style="background:var(--accent); color:white; border:none; padding:5px 15px; border-radius:3px; cursor:pointer; font-weight:bold;">Importar Backup</button>
+        </div>
     </div>
 
     <div class="group-container" id="content"></div>
 </div>
 
-<!-- Scripts de Conexão com o Firebase Cloud -->
 <script src="https://gstatic.com"></script>
 <script src="https://gstatic.com"></script>
 
 <script>
-    // Configurações do seu Banco de Dados (COLE SEUS DADOS AQUI)
+    // Configurações do Firebase (ADICIONE SEUS DADOS AQUI)
     const firebaseConfig = {
-        apiKey: "AIzaSyB_ExvzoDURzveNdJ0qxh1oG5C4oqevv0A",
-        authDomain:  "albumcopa2026-f3f73.firebaseapp.com",
+        apiKey:  "AIzaSyB_ExvzoDURzveNdJ0qxh1oG5C4oqevv0A",
+        authDomain: "albumcopa2026-f3f73.firebaseapp.com",
         projectId: "albumcopa2026-f3f73",
         storageBucket: "albumcopa2026-f3f73.firebasestorage.app",
-        messagingSenderId:  "221770623153",
+        messagingSenderId: "221770623153",
         appId: "1:221770623153:web:c46ad3d78c3395ae641a90"
     };
 
-    // Inicializa o Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-    // Armazenamos todas as marcações em um único documento chamado 'colecao'
     const docRef = db.collection("album").doc("colecao");
 
     const timesPorGrupo = {
@@ -98,9 +104,7 @@
                     div.className = `sticker ${album[id] ? 'checked' : ''}`;
                     div.innerText = i;
                     div.onclick = () => toggle(id);
-                    
                     if(album[id]) count++;
-                    
                     grid.appendChild(div);
                 }
                 card.appendChild(grid);
@@ -109,7 +113,7 @@
         });
 
         count += renderSpecials(container, "Coca Cola", "CC", 14, "cc");
-        count += renderSpecials(container, "FIFA World Cup", "FWC", 20, "fwc");
+        count += renderSpecials(container, "FIFA World Cup", "FWC", 19, "fwc");
 
         const totalGeral = 993;
         document.getElementById('total').innerText = `${count}/${totalGeral}`;
@@ -137,11 +141,9 @@
         return checkedInSpecial;
     }
 
-    // Sincronização em tempo real com a Nuvem
     function toggle(id) {
         document.getElementById('content').classList.add('loading');
         album[id] = !album[id];
-        
         docRef.set(album).then(() => {
             document.getElementById('content').classList.remove('loading');
             render();
@@ -155,7 +157,47 @@
         }
     }
 
-    // Escuta ativa: Se mudar em um terminal, atualiza no outro instantaneamente
+    // NOVA FUNÇÃO: Transforma o texto do backup antigo para o formato do Firebase
+    function importBackup() {
+        const rawText = document.getElementById('backup-input').value.trim();
+        if(!rawText) return alert("Cole o texto do backup primeiro!");
+
+        try {
+            let parsedData = JSON.parse(rawText);
+            let newAlbum = {};
+
+            // Se o backup veio do comando 1 (Array de IDs ex: ["st-1", "cc-3"])
+            if (Array.isArray(parsedData)) {
+                alert("Este formato de backup pertence à versão antiga (com IDs numéricos puros). Como mudamos os nomes das figurinhas para os nomes dos Países (Ex: Brasil (BRA)-1), esses dados antigos não encaixam perfeitamente de forma automática.");
+                return;
+            } 
+            
+            // Se o backup veio do comando 2 (Universal do LocalStorage)
+            if (Array.isArray(parsedData[0])) {
+                // Procura a chave antiga no histórico
+                const antigaColecao = parsedData.find(item => item[0] === 'album2026_v2');
+                if (antigaColecao) {
+                    newAlbum = JSON.parse(antigaColecao[1]);
+                } else {
+                    throw new Error();
+                }
+            } else {
+                // Se colou direto o objeto JSON bruto do album2026_v2
+                newAlbum = parsedData;
+            }
+
+            // Envia os dados convertidos diretamente para a nuvem
+            docRef.set(newAlbum).then(() => {
+                alert("Backup importado com sucesso para a nuvem!");
+                document.getElementById('backup-input').value = '';
+            });
+
+        } catch (e) {
+            alert("Erro ao ler o backup. Verifique se copiou o texto completo.");
+        }
+    }
+
+    // Escuta ativa do Firebase
     docRef.onSnapshot((doc) => {
         if (doc.exists) {
             album = doc.data();
@@ -163,6 +205,8 @@
             album = {};
         }
         render();
+    }, (error) => {
+        console.error("Erro no Firebase Snapshot: ", error);
     });
 </script>
 </body>
