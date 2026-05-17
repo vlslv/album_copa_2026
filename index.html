@@ -14,9 +14,6 @@
         .stat-value { display: block; font-size: 1.4em; font-weight: bold; color: var(--primary); }
         .stat-label { font-size: 0.8em; color: #666; text-transform: uppercase; }
 
-        .backup-area { width: 100%; background: #eee; padding: 10px; border-radius: 5px; display: flex; gap: 10px; margin-top: 10px; }
-        .backup-area input { flex: 1; padding: 5px; border: 1px solid #ddd; border-radius: 3px; }
-
         .group-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 20px; }
         .team-card { background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .team-name { font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--secondary); margin-bottom: 10px; display: flex; justify-content: space-between; }
@@ -38,11 +35,6 @@
         <div class="stat-item"><span class="stat-value" id="total">0/993</span><span class="stat-label">Total</span></div>
         <div class="stat-item"><span class="stat-value" id="percent">0%</span><span class="stat-label">Progresso</span></div>
         <button onclick="resetAlbum()" style="background:#ff4444; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;">Limpar Tudo</button>
-        
-        <div class="backup-area">
-            <input type="text" id="backup-input" placeholder="Cole aqui o texto do seu bloco de notas">
-            <button onclick="importBackup()" style="background:var(--accent); color:white; border:none; padding:5px 15px; border-radius:3px; cursor:pointer; font-weight:bold;">Importar Backup Corrigido</button>
-        </div>
     </div>
 
     <div class="group-container" id="content"></div>
@@ -52,7 +44,7 @@
 <script src="https://gstatic.com"></script>
 
 <script>
-    // Configurações do Firebase (MANTENHA SUAS ASPAS DUPLAS!)
+    // Configurações do Firebase (COLE AS SUAS CHAVES MANTENDO AS ASPAS)
     const firebaseConfig = {
         apiKey: "SUA_API_KEY",
         authDomain: "SEU_AUTH_DOMAIN",
@@ -79,6 +71,35 @@
         "GRUPO J": ["Argentina (ARG)", "Argélia (ALG)", "Áustria (AUT)", "Jordânia (JOR)"],
         "GRUPO K": ["Portugal (POR)", "RD Congo (COD)", "Uzbequistão (UZB)", "Colômbia (COL)"],
         "GRUPO L": ["Inglaterra (ENG)", "Croácia (CRO)", "Gana (GHA)", "Panamá (PAN)"]
+    };
+
+    // SEU BACKUP EXTRAÍDO E FORMATADO DIRETAMENTE AQUI
+    const dadosRecuperadosDoBackup = {
+        "África do Sul (RSA)-4": true, "África do Sul (RSA)-7": true, "África do Sul (RSA)-8": true, "África do Sul (RSA)-11": true, "África do Sul (RSA)-16": true, "África do Sul (RSA)-17": true,
+        "México (MEX)-2": true, "México (MEX)-4": true, "México (MEX)-8": true, "México (MEX)-10": true, "México (MEX)-12": true, "México (MEX)-17": true,
+        "Tchéquia (CZE)-9": true, "Canadá (CAN)-4": true, "Canadá (CAN)-8": true, "Canadá (CAN)-12": true,
+        "Catar (QAT)-2": true, "Catar (QAT)-6": true, "Catar (QAT)-10": true, "Catar (QAT)-19": true, "Catar (QAT)-14": true,
+        "Brasil (BRA)-1": true, "Brasil (BRA)-9": true, "Brasil (BRA)-15": true, "Brasil (BRA)-19": true,
+        "Marrocos (MAR)-12": true, "Marrocos (MAR)-14": true, "Marrocos (MAR)-15": true, "Marrocos (MAR)-17": true, "Marrocos (MAR)-19": true,
+        "Escócia (SCO)-1": true, "Escócia (SCO)-2": true, "Escócia (SCO)-9": true, "Escócia (SCO)-10": true, "Escócia (SCO)-13": true, "Escócia (SCO)-15": true, "Escócia (SCO)-19": true,
+        "EUA (USA)-3": true, "EUA (USA)-7": true, "EUA (USA)-11": true,
+        "Paraguai (PAR)-13": true, "Paraguai (PAR)-14": true, "Paraguai (PAR)-17": true, "Paraguai (PAR)-18": true, "Paraguai (PAR)-19": true,
+        "Austrália (AUS)-8": true, "Austrália (AUS)-12": true, "Alemanha (GER)-14": true,
+        "Curaçau (CUW)-1": true, "Curaçau (CUW)-5": true, "Curaçau (CUW)-6": true, "Curaçau (CUW)-10": true, "Curaçau (CUW)-19": true,
+        "Costa do Marfim (CIV)-19": true, "Equador (ECU)-3": true, "Equador (ECU)-4": true,
+        "Holanda (NED)-2": true, "Holanda (NED)-6": true, "Holanda (NED)-10": true, "Holanda (NED)-15": true, "Holanda (NED)-19": true,
+        "Japão (JPN)-4": true, "Japão (JPN)-9": true, "Japão (JPN)-14": true,
+        "Bélgica (BEL)-3": true, "Bélgica (BEL)-7": true, "Bélgica (BEL)-11": true,
+        "Irã (IRN)-2": true, "Irã (IRN)-6": true, "Irã (IRN)-8": true, "Irã (IRN)-10": true, "Irã (IRN)-12": true, "Irã (IRN)-15": true, "Irã (IRN)-17": true, "Irã (IRN)-19": true,
+        "Nova Zelândia (NZL)-1": true, "Nova Zelândia (NZL)-2": true, "Nova Zelândia (NZL)-5": true, "Nova Zelândia (NZL)-10": true, "Nova Zelândia (NZL)-15": true, "Nova Zelândia (NZL)-19": true,
+        "Espanha (ESP)-1": true, "Espanha (ESP)-5": true, "Espanha (ESP)-7": true,
+        "Cabo Verde (CPV)-1": true, "Cabo Verde (CPV)-18": true, "Arábia Saudita (KSA)-4": true, "Arábia Saudita (KSA)-8": true,
+        "Noruega (NOR)-3": true, "Noruega (NOR)-14": true, "Noruega (NOR)-18": true, "Argentina (ARG)-1": true, "Argélia (ALG)-17": true,
+        "Áustria (AUT)-9": true, "Áustria (AUT)-14": true, "Áustria (AUT)-18": true, "Jordânia (JOR)-2": true,
+        "Portugal (POR)-1": true, "Portugal (POR)-2": true, "Portugal (POR)-3": true, "Portugal (POR)-4": true, "Portugal (POR)-8": true, "Portugal (POR)-11": true, "Portugal (POR)-17": true,
+        "Colômbia (COL)-4": true, "Colômbia (COL)-8": true, "Colômbia (COL)-12": true, "Colômbia (COL)-17": true,
+        "Inglaterra (ENG)-1": true, "Inglaterra (ENG)-11": true, "Inglaterra (ENG)-16": true, "Inglaterra (ENG)-20": true,
+        "Croácia (CRO)-3": true, "Croácia (CRO)-7": true, "Croácia (CRO)-11": true, "Tunísia (TUN)-11": true, "Tunísia (TUN)-16": true
     };
 
     let album = {};
@@ -156,55 +177,21 @@
         }
     }
 
-    // NOVA FUNÇÃO ATUALIZADA: Decodifica especificamente a estrutura do seu log do console
-    function importBackup() {
-        const rawText = document.getElementById('backup-input').value.trim();
-        if(!rawText) return alert("Cole o texto do backup primeiro!");
-
-        try {
-            const parsedArray = JSON.parse(rawText);
-            
-            // Localiza o par chave/valor correspondente ao 'album2026_v2' no seu array bidimensional
-            const parAlbum = parsedArray.find(item => Array.isArray(item) && item[0] === "album2026_v2");
-            
-            if (!parAlbum || !parAlbum[1]) {
-                return alert("Não encontramos a chave 'album2026_v2' no texto colado.");
-            }
-
-            // Transforma o texto interno JSON em um objeto real de figurinhas
-            const dadosBrutosStickers = JSON.parse(parAlbum[1]);
-            let finalAlbum = {};
-
-            // Filtra os dados: remove chaves inválidas antigas e mantém apenas chaves oficiais com "true"
-            Object.keys(dadosBrutosStickers).forEach(key => {
-                if(dadosBrutosStickers[key] === true) {
-                    // Mantém apenas os registros que contêm parênteses (formato novo corrigido) ou especiais
-                    if(key.includes('(') || key.startsWith('CC-') || key.startsWith('FWC-')) {
-                        finalAlbum[key] = true;
-                    }
-                }
-            });
-
-            // Grava os dados tratados diretamente na nuvem do Firebase
-            docRef.set(finalAlbum).then(() => {
-                alert("Backup decodificado e enviado com sucesso para a nuvem!");
-                document.getElementById('backup-input').value = '';
-            }).catch(err => alert("Erro ao sincronizar com o banco de dados."));
-
-        } catch (e) {
-            alert("Erro na leitura do formato. Garanta que copiou a mensagem de texto completa.");
-        }
-    }
-
     // Escuta ativa do Firebase
     docRef.onSnapshot((doc) => {
         if (doc.exists) {
             album = doc.data();
+            // Se o banco de dados do Firebase estiver completamente vazio, injeta o backup fixo uma única vez
+            if (Object.keys(album).length === 0) {
+                docRef.set(dadosRecuperadosDoBackup);
+            }
         } else {
-            album = {};
+            // Se o documento nem existir no banco ainda, cria ele com o backup
+            docRef.set(dadosRecuperadosDoBackup);
         }
         render();
     });
 </script>
 </body>
 </html>
+
