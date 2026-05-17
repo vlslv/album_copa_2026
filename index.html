@@ -39,10 +39,9 @@
         <div class="stat-item"><span class="stat-value" id="percent">0%</span><span class="stat-label">Progresso</span></div>
         <button onclick="resetAlbum()" style="background:#ff4444; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;">Limpar Tudo</button>
         
-        <!-- Ferramenta de Importação -->
         <div class="backup-area">
-            <input type="text" id="backup-input" placeholder="Cole aqui o texto do seu bloco de notas">
-            <button onclick="importBackup()" style="background:var(--accent); color:white; border:none; padding:5px 15px; border-radius:3px; cursor:pointer; font-weight:bold;">Importar Backup</button>
+            <input type="text" id="backup-input" placeholder="Cole o texto do seu bloco de notas antigo aqui">
+            <button onclick="importBackup()" style="background:var(--accent); color:white; border:none; padding:5px 15px; border-radius:3px; cursor:pointer; font-weight:bold;">Importar e Converter</button>
         </div>
     </div>
 
@@ -53,9 +52,9 @@
 <script src="https://gstatic.com"></script>
 
 <script>
-    // Configurações do Firebase (ADICIONE SEUS DADOS AQUI)
+    // Configurações do Firebase (MANTENHA SUAS ASPAS DUPLAS!)
     const firebaseConfig = {
-        apiKey:  "AIzaSyB_ExvzoDURzveNdJ0qxh1oG5C4oqevv0A",
+        apiKey: "AIzaSyB_ExvzoDURzveNdJ0qxh1oG5C4oqevv0A",
         authDomain: "albumcopa2026-f3f73.firebaseapp.com",
         projectId: "albumcopa2026-f3f73",
         storageBucket: "albumcopa2026-f3f73.firebasestorage.app",
@@ -81,6 +80,14 @@
         "GRUPO K": ["Portugal (POR)", "RD Congo (COD)", "Uzbequistão (UZB)", "Colômbia (COL)"],
         "GRUPO L": ["Inglaterra (ENG)", "Croácia (CRO)", "Gana (GHA)", "Panamá (PAN)"]
     };
+
+    // Mapeamento linear para tradução dos IDs puros da primeira versão
+    let listaLinearDeTimes = [];
+    Object.keys(timesPorGrupo).forEach(grupo => {
+        timesPorGrupo[grupo].forEach(time => {
+            listaLinearDeTimes.push(time);
+        });
+    });
 
     let album = {};
 
@@ -157,43 +164,51 @@
         }
     }
 
-    // NOVA FUNÇÃO: Transforma o texto do backup antigo para o formato do Firebase
+    // NOVA FUNÇÃO ATUALIZADA: Converte IDs "st-X" para "País-X" automaticamente
     function importBackup() {
         const rawText = document.getElementById('backup-input').value.trim();
         if(!rawText) return alert("Cole o texto do backup primeiro!");
 
         try {
-            let parsedData = JSON.parse(rawText);
-            let newAlbum = {};
+            let oldIds = JSON.parse(rawText);
+            let convertedAlbum = {};
 
-            // Se o backup veio do comando 1 (Array de IDs ex: ["st-1", "cc-3"])
-            if (Array.isArray(parsedData)) {
-                alert("Este formato de backup pertence à versão antiga (com IDs numéricos puros). Como mudamos os nomes das figurinhas para os nomes dos Países (Ex: Brasil (BRA)-1), esses dados antigos não encaixam perfeitamente de forma automática.");
-                return;
-            } 
-            
-            // Se o backup veio do comando 2 (Universal do LocalStorage)
-            if (Array.isArray(parsedData[0])) {
-                // Procura a chave antiga no histórico
-                const antigaColecao = parsedData.find(item => item[0] === 'album2026_v2');
-                if (antigaColecao) {
-                    newAlbum = JSON.parse(antigaColecao[1]);
-                } else {
-                    throw new Error();
-                }
-            } else {
-                // Se colou direto o objeto JSON bruto do album2026_v2
-                newAlbum = parsedData;
+            if (!Array.isArray(oldIds)) {
+                // Se por acaso colou um objeto, tenta ler as chaves dele
+                oldIds = Object.keys(oldIds).filter(k => oldIds[k] === true);
             }
 
-            // Envia os dados convertidos diretamente para a nuvem
-            docRef.set(newAlbum).then(() => {
-                alert("Backup importado com sucesso para a nuvem!");
-                document.getElementById('backup-input').value = '';
+            oldIds.forEach(id => {
+                if (id.startsWith('st-')) {
+                    // Descobre o número puro (ex: st-15 -> 15)
+                    const numPuro = parseInt(id.replace('st-', ''), 10);
+                    
+                    // Na versão 1, cada time tinha 11 figurinhas fixas. 
+                    // Descobrimos o índice do time na lista linear dividindo por 11.
+                    const indiceTime = Math.floor((numPuro - 1) / 11);
+                    const figurinhaNoTime = ((numPuro - 1) % 11) + 1;
+                    
+                    const nomeDoPais = listaLinearDeTimes[indiceTime];
+                    if (nomeDoPais && figurinhaNoTime <= 20) {
+                        // Salva no formato novo (Ex: "México (MEX)-5")
+                        convertedAlbum[`${nomeDoPais}-${figurinhaNoTime}`] = true;
+                    }
+                } else if (id.startsWith('cc-') || id.startsWith('fwc-')) {
+                    // Para especiais, o formato de prefixo permaneceu quase idêntico
+                    const partes = id.split('-');
+                    const prefixoNovo = partes[0].toUpperCase(); // cc -> CC
+                    convertedAlbum[`${prefixoNovo}-${partes[1]}`] = true;
+                }
             });
 
+            // Envia o dicionário já traduzido diretamente para o Firebase
+            docRef.set(convertedAlbum).then(() => {
+                alert("Backup antigo convertido e importado com sucesso para a nuvem!");
+                document.getElementById('backup-input').value = '';
+            }).catch(err => alert("Erro ao salvar dados convertidos na nuvem."));
+
         } catch (e) {
-            alert("Erro ao ler o backup. Verifique se copiou o texto completo.");
+            alert("Erro ao ler o backup. Garanta que copiou o texto completo com os colchetes [ ].");
         }
     }
 
@@ -205,9 +220,8 @@
             album = {};
         }
         render();
-    }, (error) => {
-        console.error("Erro no Firebase Snapshot: ", error);
     });
 </script>
 </body>
 </html>
+
